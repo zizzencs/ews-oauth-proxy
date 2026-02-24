@@ -26,6 +26,8 @@ type Config struct {
 	DeviceCodeURL string
 	TokenURL      string
 	Scope         string
+	Username      string
+	Password      string
 }
 
 func loadEnvFile(filename string) {
@@ -75,6 +77,8 @@ func loadConfig() (*Config, error) {
 	deviceCodeURL := os.Getenv("EWS_OAUTH_PROXY_DEVICE_CODE_URL")
 	tokenURL := os.Getenv("EWS_OAUTH_PROXY_TOKEN_URL")
 	scope := os.Getenv("EWS_OAUTH_PROXY_SCOPE")
+	username := os.Getenv("EWS_OAUTH_PROXY_USERNAME")
+	password := os.Getenv("EWS_OAUTH_PROXY_PASSWORD")
 
 	if tenantID == "" {
 		tenantID = "common"
@@ -120,6 +124,8 @@ func loadConfig() (*Config, error) {
 		DeviceCodeURL: deviceCodeURL,
 		TokenURL:      tokenURL,
 		Scope:         scope,
+		Username:      username,
+		Password:      password,
 	}, nil
 }
 
@@ -166,6 +172,15 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if cfg.Username != "" && cfg.Password != "" {
+			reqUser, reqPass, ok := r.BasicAuth()
+			if !ok || reqUser != cfg.Username || reqPass != cfg.Password {
+				w.Header().Set("WWW-Authenticate", `Basic realm="ews-oauth-proxy"`)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+
 		proxy.ServeHTTP(w, r)
 	})
 

@@ -6,6 +6,17 @@
 
 While `ews-oauth-proxy` is perfectly configured for Microsoft 365 (`outlook.office365.com`) out of the box, it can be easily adapted to any on-premises Exchange environment, ADFS deployment, or custom cloud by simply changing the target URL and authentication endpoints.
 
+## Security Posture
+
+**⚠️ DANGER: `ews-oauth-proxy` acts as an Unauthenticated Open Relay.**
+
+Because this proxy is designed for local use, it **does not authenticate** incoming connections from your mail client. It simply strips any provided basic authentication and automatically injects your highly-privileged OAuth `Bearer` token into every EWS request before forwarding it.
+
+*   **Network Access:** By default, it binds only to `127.0.0.1` (localhost). **Do not** bind it to `0.0.0.0` or a public IP unless it is protected behind a secure reverse proxy or VPN. Anyone who can connect to the proxy's port can send email and access your mailbox using your identity without any password.
+*   **Token Protection:** The proxy saves your persistent refresh token locally (e.g., `.token.json`). Treat the machine housing this file as highly sensitive; if the file is copied, an attacker can access your mailbox directly from anywhere.
+
+For a full breakdown of the proxy's security model, please read [SECURITY.md](SECURITY.md).
+
 ## Quick Start
 
 1. Generate a local self-signed TLS cert inside the `certs` folder:
@@ -32,6 +43,8 @@ The following variables are supported (via environment or config file):
 * `EWS_OAUTH_PROXY_CLIENT_ID` (Optional): Your Azure AD Client ID. Defaults to the Outlook desktop application client ID (`d3590ed6-52b3-4102-aeff-aad2292ab01c`).
 * `EWS_OAUTH_PROXY_CLIENT_SECRET` (Optional): Your Azure AD Client Secret. Usually not required for the Device Code flow, but necessary for strict custom Enterprise Applications.
 * `EWS_OAUTH_PROXY_LISTEN_ADDRESS` (Optional): The IP address and port to bind to. Defaults to `127.0.0.1:8443`. Set to `0.0.0.0:8443` or `:8443` to listen on all interfaces.
+* `EWS_OAUTH_PROXY_USERNAME` (Optional): Username required by the proxy for basic authentication.
+* `EWS_OAUTH_PROXY_PASSWORD` (Optional): Password required by the proxy for basic authentication. (Note: These are independent of your Microsoft 365 credentials).
 * `EWS_OAUTH_PROXY_TOKEN_FILE` (Optional): Path to the generated token cache file. Defaults to `.token.json`.
 * `EWS_OAUTH_PROXY_CERT_FILE` (Optional): Path to your TLS certificate. Defaults to `certs/cert.pem`.
 * `EWS_OAUTH_PROXY_KEY_FILE` (Optional): Path to your TLS private key. Defaults to `certs/key.pem`.
@@ -54,6 +67,14 @@ If you do not have your own Azure AD Application configured, you can try using u
 * `27922004-5251-4030-b22d-91ecd9a37ea4` - Outlook mobile application
 * `bc59ab01-8403-45c6-8796-ac3ef710b3e3` - Outlook web application
 * `9e5f94bc-e8a4-4e73-b8be-63364c29d753` - Mozilla Thunderbird
+
+## Securing the Proxy Connection
+
+By default, the proxy acts as an **Unauthenticated Open Relay** on localhost. If you expose the proxy on your wider network (e.g., binding to `0.0.0.0:8443`), it is highly recommended to require explicit proxy authentication.
+
+You can configure standard Basic Authentication by setting the `EWS_OAUTH_PROXY_USERNAME` and `EWS_OAUTH_PROXY_PASSWORD` variables in your `config.env`. 
+
+When these are set, your email client must be configured with this "Proxy Password" instead of your actual corporate password. The proxy validates this password, securely drops the header, signs the request with your OAuth Bearer token, and handles the rest!
 
 ## TLS Certificates
 
