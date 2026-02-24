@@ -1,0 +1,14 @@
+[Unit]
+Description=EWS OAuth Proxy (%I)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ews-oauth-proxy
+Environment="EWS_OAUTH_PROXY_CONFIG=%h/.config/ews-oauth-proxy/%I.env"
+ExecStart=%h/ews-oauth-proxy/ews-oauth-proxy
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

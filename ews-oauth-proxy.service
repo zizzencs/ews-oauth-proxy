@@ -1,0 +1,14 @@
+[Unit]
+Description=EWS OAuth Proxy
+After=network.target
+
+[Service]
+Type=simple
+# Change the path to where you cloned/compiled/downloaded/installed the application
+WorkingDirectory=%h/ews-oauth-proxy
+ExecStart=%h/ews-oauth-proxy/ews-oauth-proxy
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

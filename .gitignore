@@ -1,0 +1,17 @@
+# Secrets
+.token.json
+config.env
+certs/
+
+# Build outputs
+ews-oauth-proxy
+ews-oauth-proxy-linux-arm64
+ews-oauth-proxy-macos-intel
+ews-oauth-proxy-macos-arm64
+ews-oauth-proxy.exe
+ews-oauth-proxy-arm64.exe
+
+# OS/IDE ignores
+.DS_Store
+.idea/
+.vscode/
