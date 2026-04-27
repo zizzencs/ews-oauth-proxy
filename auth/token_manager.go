@@ -13,23 +13,37 @@ import (
 	"time"
 )
 
+// AuthFlow selects how an initial refresh token is obtained.
+type AuthFlow string
+
+const (
+	FlowDeviceCode   AuthFlow = "device"
+	FlowAuthCodePKCE AuthFlow = "interactive"
+)
+
 type TokenManager struct {
 	tenantID      string
 	clientID      string
 	clientSecret  string
 	tokenFile     string
 	deviceCodeURL string
+	authorizeURL  string
 	tokenURL      string
+	redirectURI   string
 	scope         string
+	authFlow      AuthFlow
 	mu            sync.RWMutex
 	accessToken   string
 	refreshToken  string
 	expiresAt     time.Time
 }
 
-func NewTokenManager(tenantID, clientID, clientSecret, tokenFile, deviceCodeURL, tokenURL, scope string) *TokenManager {
+func NewTokenManager(tenantID, clientID, clientSecret, tokenFile, deviceCodeURL, authorizeURL, tokenURL, redirectURI, scope string, authFlow AuthFlow) *TokenManager {
 	if tokenFile == "" {
 		tokenFile = ".token.json"
+	}
+	if authFlow == "" {
+		authFlow = FlowDeviceCode
 	}
 	return &TokenManager{
 		tenantID:      tenantID,
@@ -37,8 +51,11 @@ func NewTokenManager(tenantID, clientID, clientSecret, tokenFile, deviceCodeURL,
 		clientSecret:  clientSecret,
 		tokenFile:     tokenFile,
 		deviceCodeURL: deviceCodeURL,
+		authorizeURL:  authorizeURL,
 		tokenURL:      tokenURL,
+		redirectURI:   redirectURI,
 		scope:         scope,
+		authFlow:      authFlow,
 	}
 }
 
@@ -47,8 +64,8 @@ func (tm *TokenManager) Start() error {
 	log.Println("[AUTH] Initializing Token Manager...")
 
 	if err := tm.loadFromDisk(); err != nil || tm.refreshToken == "" {
-		log.Println("[AUTH] No valid refresh token found. Starting new Device Code flow.")
-		if err := tm.runDeviceFlow(); err != nil {
+		log.Printf("[AUTH] No valid refresh token found. Starting new %s flow.", tm.authFlow)
+		if err := tm.runInitialFlow(); err != nil {
 			return err
 		}
 	} else {
@@ -57,7 +74,7 @@ func (tm *TokenManager) Start() error {
 
 	// Do initial refresh to ensure our Access Token is hot
 	if err := tm.doRefresh(); err != nil {
-		log.Printf("[AUTH] Failed to refresh existing token: %v. The token may be revoked or expired. Starting new Device Code flow.", err)
+		log.Printf("[AUTH] Failed to refresh existing token: %v. The token may be revoked or expired. Starting new %s flow.", err, tm.authFlow)
 
 		// Unload invalid state
 		tm.mu.Lock()
@@ -66,7 +83,7 @@ func (tm *TokenManager) Start() error {
 		tm.mu.Unlock()
 
 		// Attempt a fresh authentication
-		if err := tm.runDeviceFlow(); err != nil {
+		if err := tm.runInitialFlow(); err != nil {
 			return err
 		}
 	}
@@ -84,18 +101,19 @@ func (tm *TokenManager) GetToken() string {
 	return tm.accessToken
 }
 
-func (tm *TokenManager) runDeviceFlow() error {
-	dcr, err := InitiateDeviceCodeFlow(tm.tenantID, tm.clientID, tm.clientSecret, tm.deviceCodeURL, tm.scope)
-	if err != nil {
-		return err
+// runInitialFlow dispatches to the configured initial-authentication flow.
+func (tm *TokenManager) runInitialFlow() error {
+	var tr *TokenResponse
+	var err error
+
+	switch tm.authFlow {
+	case FlowAuthCodePKCE:
+		tr, err = RunAuthCodeFlow(tm.tenantID, tm.clientID, tm.clientSecret, tm.authorizeURL, tm.tokenURL, tm.redirectURI, tm.scope)
+	case FlowDeviceCode, "":
+		tr, err = tm.runDeviceFlow()
+	default:
+		return fmt.Errorf("unknown auth flow: %q", tm.authFlow)
 	}
-
-	fmt.Printf("\n=======================================================\n")
-	fmt.Printf("ACTION REQUIRED: Microsoft Authentication\n")
-	fmt.Printf("%s\n", dcr.Message)
-	fmt.Printf("=======================================================\n\n")
-
-	tr, err := PollForToken(tm.tenantID, tm.clientID, tm.clientSecret, tm.tokenURL, dcr.DeviceCode, dcr.Interval)
 	if err != nil {
 		return err
 	}
@@ -109,6 +127,20 @@ func (tm *TokenManager) runDeviceFlow() error {
 	log.Println("[AUTH] Successfully authenticated! Saving token for future use.")
 	tm.saveToDisk()
 	return nil
+}
+
+func (tm *TokenManager) runDeviceFlow() (*TokenResponse, error) {
+	dcr, err := InitiateDeviceCodeFlow(tm.tenantID, tm.clientID, tm.clientSecret, tm.deviceCodeURL, tm.scope)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("\n=======================================================\n")
+	fmt.Printf("ACTION REQUIRED: Microsoft Authentication\n")
+	fmt.Printf("%s\n", dcr.Message)
+	fmt.Printf("=======================================================\n\n")
+
+	return PollForToken(tm.tenantID, tm.clientID, tm.clientSecret, tm.tokenURL, dcr.DeviceCode, dcr.Interval)
 }
 
 func (tm *TokenManager) doRefresh() error {

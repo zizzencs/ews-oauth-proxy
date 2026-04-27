@@ -24,8 +24,11 @@ type Config struct {
 	KeyFile       string
 	TargetURL     string
 	DeviceCodeURL string
+	AuthorizeURL  string
 	TokenURL      string
+	RedirectURI   string
 	Scope         string
+	AuthFlow      string
 	Username      string
 	Password      string
 }
@@ -75,8 +78,11 @@ func loadConfig() (*Config, error) {
 	keyFile := os.Getenv("EWS_OAUTH_PROXY_KEY_FILE")
 	targetURL := os.Getenv("EWS_OAUTH_PROXY_TARGET_URL")
 	deviceCodeURL := os.Getenv("EWS_OAUTH_PROXY_DEVICE_CODE_URL")
+	authorizeURL := os.Getenv("EWS_OAUTH_PROXY_AUTHORIZE_URL")
 	tokenURL := os.Getenv("EWS_OAUTH_PROXY_TOKEN_URL")
+	redirectURI := os.Getenv("EWS_OAUTH_PROXY_REDIRECT_URI")
 	scope := os.Getenv("EWS_OAUTH_PROXY_SCOPE")
+	authFlow := os.Getenv("EWS_OAUTH_PROXY_AUTH_FLOW")
 	username := os.Getenv("EWS_OAUTH_PROXY_USERNAME")
 	password := os.Getenv("EWS_OAUTH_PROXY_PASSWORD")
 
@@ -105,11 +111,20 @@ func loadConfig() (*Config, error) {
 	if deviceCodeURL == "" {
 		deviceCodeURL = "https://login.microsoftonline.com/%s/oauth2/v2.0/devicecode"
 	}
+	if authorizeURL == "" {
+		authorizeURL = "https://login.microsoftonline.com/%s/oauth2/v2.0/authorize"
+	}
 	if tokenURL == "" {
 		tokenURL = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
 	}
+	if redirectURI == "" {
+		redirectURI = "https://login.microsoftonline.com/common/oauth2/nativeclient"
+	}
 	if scope == "" {
 		scope = "https://outlook.office365.com/EWS.AccessAsUser.All offline_access"
+	}
+	if authFlow == "" {
+		authFlow = "device"
 	}
 
 	return &Config{
@@ -122,8 +137,11 @@ func loadConfig() (*Config, error) {
 		KeyFile:       keyFile,
 		TargetURL:     targetURL,
 		DeviceCodeURL: deviceCodeURL,
+		AuthorizeURL:  authorizeURL,
 		TokenURL:      tokenURL,
+		RedirectURI:   redirectURI,
 		Scope:         scope,
+		AuthFlow:      authFlow,
 		Username:      username,
 		Password:      password,
 	}, nil
@@ -136,7 +154,7 @@ func main() {
 	}
 
 	// Initialize the Token Manager
-	tm := auth.NewTokenManager(cfg.TenantID, cfg.ClientID, cfg.ClientSecret, cfg.TokenFile, cfg.DeviceCodeURL, cfg.TokenURL, cfg.Scope)
+	tm := auth.NewTokenManager(cfg.TenantID, cfg.ClientID, cfg.ClientSecret, cfg.TokenFile, cfg.DeviceCodeURL, cfg.AuthorizeURL, cfg.TokenURL, cfg.RedirectURI, cfg.Scope, auth.AuthFlow(cfg.AuthFlow))
 	if err := tm.Start(); err != nil {
 		log.Fatalf("Authentication failed: %v", err)
 	}

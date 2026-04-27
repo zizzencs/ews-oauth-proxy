@@ -48,11 +48,14 @@ The following variables are supported (via environment or config file):
 * `EWS_OAUTH_PROXY_TOKEN_FILE` (Optional): Path to the generated token cache file. Defaults to `.token.json`.
 * `EWS_OAUTH_PROXY_CERT_FILE` (Optional): Path to your TLS certificate. Defaults to `certs/cert.pem`.
 * `EWS_OAUTH_PROXY_KEY_FILE` (Optional): Path to your TLS private key. Defaults to `certs/key.pem`.
+* `EWS_OAUTH_PROXY_AUTH_FLOW` (Optional): Initial authentication flow to use when no cached refresh token is present. Either `device` (Device Code, default) or `interactive` (Authorization Code with PKCE — prints an authorize URL and prompts you to paste back the redirected URL or `code` parameter). Once a refresh token is obtained, both flows behave identically.
 
 **Advanced Options (For On-Premises Exchange / Custom Clouds):**
 * `EWS_OAUTH_PROXY_TARGET_URL` (Optional): The Exchange server target. Defaults to `https://outlook.office365.com`.
 * `EWS_OAUTH_PROXY_DEVICE_CODE_URL` (Optional): The OAuth Device Code endpoint. Defaults to `https://login.microsoftonline.com/%s/oauth2/v2.0/devicecode` (where `%s` is replaced by the Tenant ID).
+* `EWS_OAUTH_PROXY_AUTHORIZE_URL` (Optional): The OAuth Authorize endpoint, used by the interactive flow. Defaults to `https://login.microsoftonline.com/%s/oauth2/v2.0/authorize`.
 * `EWS_OAUTH_PROXY_TOKEN_URL` (Optional): The OAuth Token endpoint. Defaults to `https://login.microsoftonline.com/%s/oauth2/v2.0/token` (where `%s` is replaced by the Tenant ID).
+* `EWS_OAUTH_PROXY_REDIRECT_URI` (Optional): Redirect URI used by the interactive flow. Defaults to `https://login.microsoftonline.com/common/oauth2/nativeclient`, Microsoft's hosted "native client" page that is pre-registered for first-party public clients (Outlook desktop, etc.) and simply shows the authorization code in the address bar for copy-paste.
 * `EWS_OAUTH_PROXY_SCOPE` (Optional): The OAuth scope. Defaults to `https://outlook.office365.com/EWS.AccessAsUser.All offline_access`.
 
 ## Well-Known OAuth IDs
