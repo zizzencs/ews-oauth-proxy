@@ -69,6 +69,7 @@ If you do not have your own Azure AD Application configured, you can try using u
 * `d3590ed6-52b3-4102-aeff-aad2292ab01c` - Outlook desktop application
 * `27922004-5251-4030-b22d-91ecd9a37ea4` - Outlook mobile application
 * `bc59ab01-8403-45c6-8796-ac3ef710b3e3` - Outlook web application
+* `9199bf20-a13f-4107-85dc-02114787ef48` - One Outlook Web (the new Outlook for Windows)
 * `9e5f94bc-e8a4-4e73-b8be-63364c29d753` - Mozilla Thunderbird
 
 ## Securing the Proxy Connection
